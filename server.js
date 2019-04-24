@@ -12,9 +12,9 @@ var program = require('commander');
 const app = express();
 
 var options = {
-	port: 3000,
+	port: process.env.PORT || 3000,
 	host: '127.0.0.1',
-	url: 'https://notica.us',
+	url: process.env.WEB_URL || 'https://notica.us',
 };
 
 program.version(pjson.version)
