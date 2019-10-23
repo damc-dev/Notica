@@ -2,6 +2,7 @@
 import React from 'react';
 import io from 'socket.io-client';
 import QRCode from 'qrcode.react';
+import { thisTypeAnnotation } from 'babel-types';
 
 export default class Home extends React.Component {
 	constructor(props) {
@@ -19,9 +20,10 @@ export default class Home extends React.Component {
 	}
 
 	componentDidMount() {
+		this.checksupport();
+		this.checkperm();
 		this.getAlerts();
 		this.connect();
-		this.checksupport();
 	}
 
 	componentWillUnmount() {
@@ -44,62 +46,64 @@ export default class Home extends React.Component {
 
 		socket.on('message', (data) => {
 			this.sendNotification(data);
-			this.addAlert(data)
+			this.addAlert(data);
 		});
 	}
 
 	addAlert(data) {
 		if (this.state.storSupport) {
-			let id = this.state.alerts.length
-			localStorage.setItem("alert-" + id, data)
+			let alerts = this.state.alerts;
+			alerts.push(data);
+			localStorage.setItem('alerts', JSON.stringify(alerts));
+			this.getAlerts();
 		}
-		this.setState(prevState => (
-				{alerts: [...prevState.alerts, data]}
-			)
-		)
-		console.log("Added alert ", this.state.alerts)
 	}
 
 	getAlerts() {
 		if (this.state.storSupport) {
-			let alerts = new Array()
-			for (var i = 0; i < localStorage.length; i++) {
-				var key = localStorage.key(i);
-				if (key.substring(0, 5) == "alert") {
-					var item = localStorage.getItem(key);
-					var todoItem = item
-					//var todoItem = JSON.parse(item);
-					alerts.push(todoItem);
-			   }
+			let alerts = new Array();
+			let alertsJson = localStorage.getItem('alerts');
+			if (alertsJson != null) {
+				alerts = JSON.parse(alertsJson);
 			}
-			this.setState({alerts: alerts})
+			this.setState({alerts: alerts});
+		}
+	}
+	clearAlerts() {
+		if (this.state.storSupport) {
+			if (localStorage.getItem('alerts') != null) {
+				localStorage.removeItem('alerts');
+			}
+			this.getAlerts();
 		}
 	}
 
 	sendNotification(data) {
-		let title = data || 'Received a notification!';
+		let message = data || 'Received a notification!';
 
 		let options = {
-			body: 'Notification from Notica',
-			icon: 'img/icon.png',
-			iconUrl: 'img/icon.png',
+			body: title,
+			icon: icon,
+			iconUrl: icon,
 			vibrate: [200, 100, 200]
 		};
 
 		if (this.state.registration) {
-			this.state.registration.showNotification(title, options);
+			this.state.registration.showNotification(message, options);
 		} else {
-			new Notification(title, options);
+			new Notification(message, options);
 		}
 	}
 
 	checksupport() {
 		let supported = ('Notification' in window);
 		this.setState({supported: supported});
+	}
 
-		if (supported) {
+	askperm() {
+		if (this.state.supported) {
 			Notification.requestPermission(permission => {
-				this.checkperm(permission);
+				this.checkperm();
 
 				try {
 					navigator.serviceWorker.register('/js/sw.js').then((reg) => {
@@ -112,8 +116,8 @@ export default class Home extends React.Component {
 		}
 	}
 
-	checkperm(permission) {
-		if (permission === 'granted') {
+	checkperm() {
+		if (Notification.permission === 'granted') {
 			this.setState({haveperm: true});
 		}
 		else {
@@ -127,6 +131,7 @@ export default class Home extends React.Component {
 		let supported = this.state.supported;
 		let haveperm = this.state.haveperm;
 		let connected = this.state.connected;
+		const port = location.port ? ':' + location.port : '';
 		let url = location.protocol + '//' + location.hostname + '/?';
 		let alerts = this.state.alerts.map((value,index) => {
 			return <li key={index}>{value}</li>
@@ -137,9 +142,16 @@ export default class Home extends React.Component {
 				<div className="row">
 					<div className="twelve columns">
 						<h4>Notifications</h4>
-						{ storSupport && <div className="alerts"><ul>
-							{alerts}
-						</ul></div>}
+
+						{ !storSupport && <div className="error"><p>
+							<i className="fa fa-times" aria-hidden="true"></i>This browser does not support local storage so it is unable to save notifications.
+						</p></div>}
+						{ storSupport && <div>
+							<div className="alerts">
+								<ul>{alerts}</ul>
+							</div>
+							<a className="button" href="javascript:void(0)" onClick={() => this.clearAlerts()}>Clear</a>
+						</div>}
 					</div>
 				</div>
 				<div className="row">
@@ -152,9 +164,10 @@ export default class Home extends React.Component {
 						{ !haveperm && supported && <div>
 							<p>
 								Please give this site permission to display notifications.
-								<br />
-								<a className="button" href="javascript:void(0)" onClick={() => this.checkperm(Notification.permission)}>
-									Check Again
+							</p>
+							<p>
+								<a className="button" href="javascript:void(0)" onClick={() => this.askperm()}>
+									Allow Notifications
 								</a>
 							</p>
 						</div>}
