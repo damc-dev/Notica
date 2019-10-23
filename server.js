@@ -20,9 +20,9 @@ var options = {
 };
 
 program.version(pjson.version)
-	.option('-p, --port <port>', 'Host port (3000)', '3000')
+	.option('-p, --port <port>', 'Host port (3000)', process.env.PORT || '3000')
 	.option('-H, --host <IP>', 'Host IP (127.0.0.1)', '127.0.0.1')
-	.option('-U, --url <URL>', 'Website URL (https://notica.us)', 'https://notica.us')
+	.option('-U, --url <URL>', 'Website URL (https://notica.us)', process.env.WEB_URL || 'https://notica.us')
 	.option('-t, --title <string>', 'Custom title (\'Notification from Notica\')', 'Notification from Notica')
 	.option('-i, --icon <path>', 'Custom icon (img/icon.png)', 'img/icon.png');
 
